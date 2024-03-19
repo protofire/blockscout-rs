@@ -42,4 +42,4 @@ jobs:
           AWS_ECR_REPOSITORY: bs-multichain-search
         run: |
           docker build -t $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:${{ env.IMAGE_TAG }} -t $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:latest -f Dockerfile .
-          docker push $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:${{ env.IMAGE_TAG }} $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:latest
+          docker push $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY --all-tags
