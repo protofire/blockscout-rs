@@ -10,7 +10,7 @@ name: Docker build and push (multichain-search)
 
 defaults:
   run:
-    working-directory: multichain-search
+    working-directory: multichain-search/backend
 
 jobs:
   push:
@@ -31,21 +31,15 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-
       - name: Prepare image tag
         shell: bash
         run: |
           echo "IMAGE_TAG=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
 
       - name: Build and push
-        uses: docker/build-push-action@v2
         env:
           AWS_ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           AWS_ECR_REPOSITORY: bs-multichain-search
-        with:
-          context: "multichain-search/backend"
-          file: "multichain-search/backend/Dockerfile"
-          push: true
-          tags: ${{ env.AWS_ECR_REGISTRY }}/${{ env.AWS_ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}, ${{ env.AWS_ECR_REGISTRY }}/${{ env.AWS_ECR_REPOSITORY }}:latest
+        run: |
+          docker build -t $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:${{ env.IMAGE_TAG }} -t $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:latest -f Dockerfile .
+          docker push $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:${{ env.IMAGE_TAG }} $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:latest
