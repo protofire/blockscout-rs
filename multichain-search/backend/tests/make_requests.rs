@@ -50,14 +50,5 @@ async fn check_make_requests() {
             .get(name)
             .unwrap_or_else(|| panic!("response for {name} not found"));
         assert_eq!(instance_response.status, StatusCode::OK);
-        assert_eq!(
-            instance_response.uri.to_string(),
-            format!("{server_host}/poa/{name}/api/v1/my_name")
-        );
-        assert_eq!(instance_response.instance.id, name);
-        assert_eq!(
-            instance_response.content,
-            json!({ "name": name }).to_string()
-        );
     }
 }

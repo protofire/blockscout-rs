@@ -1,6 +1,6 @@
 use actix_web::{
     dev::RequestHead,
-    http::{uri::PathAndQuery, StatusCode, Uri},
+    http::{uri::PathAndQuery, StatusCode},
     web::Bytes,
 };
 use awc::{Client, ClientRequest};
@@ -40,18 +40,15 @@ impl BlockscoutProxy {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct InstanceResponse {
-    pub instance: Instance,
-    pub content: String,
+    pub data: Option<serde_json::Value>,
     #[serde(with = "http_serde::status_code")]
     pub status: StatusCode,
-    #[serde(with = "http_serde::uri")]
-    pub uri: Uri,
     pub elapsed_secs: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Response(pub HashMap<String, InstanceResponse>);
 
 impl BlockscoutProxy {
@@ -87,7 +84,6 @@ impl BlockscoutProxy {
         request: ClientRequest,
         body: Bytes,
     ) -> InstanceResponse {
-        let uri = request.get_uri().to_owned();
         let now = time::Instant::now();
         let (content, status) = match Self::perform_request(request, body).await {
             Ok((body, status)) => (body, status),
@@ -95,11 +91,17 @@ impl BlockscoutProxy {
         };
         let elapsed_secs = now.elapsed().as_secs_f64().to_string();
         tracing::debug!(elapsed = ?elapsed_secs, "request finished");
+
+        let mut data = None;
+        if status.is_success() {
+            let parsed_json: serde_json::Value = serde_json::from_str(&content).unwrap();
+            let items = parsed_json.get("items");
+            data = items.cloned();
+        }
+
         InstanceResponse {
-            instance: instance.clone(),
-            content,
+            data,
             status,
-            uri,
             elapsed_secs,
         }
     }
@@ -114,6 +116,7 @@ impl BlockscoutProxy {
             .map_err(|e| anyhow::Error::msg(e.to_string()))?;
         let bytes = response.body().await?;
         let content = str::from_utf8(bytes.as_ref())?.to_string();
+
         Ok((content, response.status()))
     }
 }
