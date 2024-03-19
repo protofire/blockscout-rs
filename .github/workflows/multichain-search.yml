@@ -1,0 +1,51 @@
+on:
+  push:
+    branches:
+      - 'staging-harmony'
+    paths:
+      - multichain-search/**
+      - .github/workflows/multichain-search.yml
+
+name: Docker build and push (multichain-search)
+
+defaults:
+  run:
+    working-directory: multichain-search
+
+jobs:
+  push:
+    name: Docker build and push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.STG_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.STG_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to AWS ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Prepare image tag
+        shell: bash
+        run: |
+          echo "IMAGE_TAG=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
+
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        env:
+          AWS_ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          AWS_ECR_REPOSITORY: bs-multichain-search
+        with:
+          context: "multichain-search/backend"
+          file: "multichain-search/backend/Dockerfile"
+          push: true
+          tags: ${{ env.AWS_ECR_REGISTRY }}/${{ env.AWS_ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}, ${{ env.AWS_ECR_REGISTRY }}/${{ env.AWS_ECR_REPOSITORY }}:latest
