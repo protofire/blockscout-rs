@@ -1,6 +1,6 @@
 # <h1 align="center"> Blockscout multichain search </h1>
 
-This service provides web application for blockscout multi-chain-search.
+This service provides web application for blockscout multichain-search.
 
 Basically, it aggregates responses from all blockscout instances, and combines them into convenient form.
 
