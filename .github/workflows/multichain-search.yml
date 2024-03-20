@@ -8,6 +8,9 @@ on:
 
 name: Docker build and push (multichain-search)
 
+env:
+  K8S_DEPLOYMENT_NAME: bs-mc-search
+
 defaults:
   run:
     working-directory: multichain-search/backend
@@ -43,3 +46,20 @@ jobs:
         run: |
           docker build -t $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:${{ env.IMAGE_TAG }} -t $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:latest -f Dockerfile .
           docker push $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY --all-tags
+
+  redeploy:
+    name: K8s rollout
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/setup-kubectl@v3
+        id: install
+
+      - uses: azure/k8s-set-context@v4
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.STG_HARMONY_TESTNET_KUBECONFIG }}
+
+      - name: Restart deployment
+        shell: bash
+        run: |
+          kubectl rollout restart deployment/$K8S_DEPLOYMENT_NAME
