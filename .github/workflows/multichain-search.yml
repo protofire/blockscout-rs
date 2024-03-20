@@ -11,10 +11,6 @@ name: Docker build and push (multichain-search)
 env:
   K8S_DEPLOYMENT_NAME: bs-mc-search
 
-defaults:
-  run:
-    working-directory: multichain-search/backend
-
 jobs:
   push:
     name: Docker build and push
@@ -36,10 +32,12 @@ jobs:
 
       - name: Prepare image tag
         shell: bash
+        working-directory: multichain-search/backend
         run: |
           echo "IMAGE_TAG=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
 
       - name: Build and push
+        working-directory: multichain-search/backend
         env:
           AWS_ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           AWS_ECR_REPOSITORY: bs-multichain-search
