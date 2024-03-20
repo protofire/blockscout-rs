@@ -49,6 +49,7 @@ jobs:
 
   redeploy:
     name: K8s rollout
+    needs: push
     runs-on: ubuntu-latest
     steps:
       - uses: azure/setup-kubectl@v3
@@ -60,6 +61,5 @@ jobs:
           kubeconfig: ${{ secrets.STG_HARMONY_TESTNET_KUBECONFIG }}
 
       - name: Restart deployment
-        shell: bash
         run: |
           kubectl rollout restart deployment/$K8S_DEPLOYMENT_NAME
