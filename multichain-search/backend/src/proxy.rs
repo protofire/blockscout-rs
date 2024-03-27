@@ -69,7 +69,8 @@ impl BlockscoutProxy {
                     url = format!("{url}{path_and_query}")
                 };
                 let request = client.request_from(url, request_head);
-                let response = Self::send_request(request, body.clone()).await;
+                let response = Self::send_request(instance, request, body.clone()).await;
+
                 (instance.id.clone(), response)
             })
             .buffer_unordered(self.concurrent_requests)
@@ -80,6 +81,7 @@ impl BlockscoutProxy {
 
     #[tracing::instrument(skip(request, body), level = "debug")]
     async fn send_request(
+        instance: &Instance,
         request: ClientRequest,
         body: Bytes,
     ) -> InstanceResponse {
@@ -93,7 +95,21 @@ impl BlockscoutProxy {
 
         let mut data = None;
         if status.is_success() {
-            data = serde_json::from_str(&content).unwrap_or(None);
+            let mut parsed_data: Option<serde_json::Value> = serde_json::from_str(&content).unwrap_or(None);
+
+            // If response is success and data is array we will add __instance_id__ key to each object
+            if let Some(serde_json::Value::Array(ref mut array)) = parsed_data {
+                for item in array.iter_mut() {
+                    if let serde_json::Value::Object(ref mut object) = item {
+                        object.insert(
+                            "__id".to_string(),
+                            serde_json::Value::String(instance.id.clone()),
+                        );
+                    }
+                }
+            }
+
+            data = parsed_data;
         }
 
         InstanceResponse {
