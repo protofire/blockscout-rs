@@ -102,7 +102,7 @@ impl BlockscoutProxy {
                 for item in array.iter_mut() {
                     if let serde_json::Value::Object(ref mut object) = item {
                         object.insert(
-                            "__id".to_string(),
+                            "shardID".to_string(),
                             serde_json::Value::String(instance.id.clone()),
                         );
                     }
