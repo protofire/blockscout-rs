@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - 'staging-harmony'
+      - 'mainnet'
     paths:
       - multichain-search/**
       - .github/workflows/multichain-search.yml
@@ -9,55 +9,33 @@ on:
 name: Docker build and push (multichain-search)
 
 env:
-  K8S_DEPLOYMENT_NAME: bs-mc-search
+  IMAGE_REGISTRY: ${{ secrets.PROD_OVH_REGISTRY_URL }}
+  IMAGE_REPOSITORY: blockscout/mcs
 
 jobs:
   push:
     name: Docker build and push
-    runs-on: ubuntu-latest
+    runs-on: w3-runner
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Login to OVH Managed Private Registry
+        uses: docker/login-action@v3
         with:
-          aws-access-key-id: ${{ secrets.STG_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.STG_AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Login to AWS ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+          username: ${{ secrets.PROD_OVH_REGISTRY_USERNAME }}
+          password: ${{ secrets.PROD_OVH_REGISTRY_PASSWORD }}
+          registry: ${{ env.IMAGE_REGISTRY }}
 
       - name: Prepare image tag
         shell: bash
         working-directory: multichain-search/backend
         run: |
+          echo "BRANCH_NAME=${GITHUB_REF##*/}" >> "$GITHUB_ENV"
           echo "IMAGE_TAG=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
 
       - name: Build and push
         working-directory: multichain-search/backend
-        env:
-          AWS_ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          AWS_ECR_REPOSITORY: bs-multichain-search
         run: |
-          docker build -t $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:${{ env.IMAGE_TAG }} -t $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY:latest -f Dockerfile .
-          docker push $AWS_ECR_REGISTRY/$AWS_ECR_REPOSITORY --all-tags
-
-  redeploy:
-    name: K8s rollout
-    needs: push
-    runs-on: ubuntu-latest
-    steps:
-      - uses: azure/setup-kubectl@v3
-        id: install
-
-      - uses: azure/k8s-set-context@v4
-        with:
-          method: kubeconfig
-          kubeconfig: ${{ secrets.STG_HARMONY_TESTNET_KUBECONFIG }}
-
-      - name: Restart deployment
-        run: |
-          kubectl rollout restart deployment/$K8S_DEPLOYMENT_NAME
+          docker build -t ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_REPOSITORY }}:${{ env.BRANCH_NAME }}-${{ env.IMAGE_TAG }} -t ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_REPOSITORY }}:${{ env.BRANCH_NAME }}-latest -f Dockerfile .
+          docker push ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_REPOSITORY }} --all-tags
