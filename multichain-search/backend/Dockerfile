@@ -1,4 +1,4 @@
-FROM lukemathwalker/cargo-chef:0.1.62-rust-1.75 as chef
+FROM lukemathwalker/cargo-chef:0.1.62-rust-1.72-buster as chef
 WORKDIR /app
 
 FROM chef AS plan
@@ -13,7 +13,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release
 
-FROM gcr.io/distroless/cc:16dc4a6a33838006fe956e4c19f049ece9c18a8d
+FROM gcr.io/distroless/cc
 
 ENV RUST_LOG="info"
 
